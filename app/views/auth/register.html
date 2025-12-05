@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Регистрация</h2>
+<form method="POST">
+    <input name="email" type="email" placeholder="Email" required><br><br>
+    <input name="password" type="password" placeholder="Пароль" minlength="6" required><br><br>
+    <button>Зарегистрироваться</button>
+</form>
+<p><a href="{{ url_for('auth.login') }}">Уже есть аккаунт?</a></p>
+{% endblock %}

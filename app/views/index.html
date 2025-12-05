@@ -1,0 +1,27 @@
+<!-- views/index.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<h1>3D Model Store</h1>
+<h2>ЭТО ГЛАВНАЯ СТРАНИЦА</h2>
+<!-- {% if current_user.is_authenticated and current_user.role == 'seller' %}
+<h2>Загрузить 3D-модель</h2>
+{% if current_user.is_authenticated and current_user.role == 'seller' %}
+<p><a href="{{ url_for('shop.upload') }}" class="btn">📤 Загрузить новую модель</a></p>
+{% endif %}
+
+<form method="POST" enctype="multipart/form-data" action="{{ url_for('shop.upload') }}">
+    <input name="title" placeholder="Название" required><br><br>
+    <textarea name="description" placeholder="Описание"></textarea><br><br>
+    <input name="price" type="number" step="0.01" placeholder="Цена, $" required><br><br>
+
+    <label>Превью (изображение):</label><br>
+    <input name="preview" type="file" accept="image/*"><br><br>
+
+    <label>3D-файл (.glb, .obj, .fbx):</label><br>
+    <input name="file" type="file" accept=".glb,.obj,.fbx" required><br><br>
+
+    <button type="submit">Загрузить</button>
+</form>
+{% endif %} -->
+{% endblock %}

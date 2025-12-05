@@ -1,0 +1,13 @@
+<!-- views/index.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<h1>🎉 3D Model Store</h1>
+
+<p><a href="{{ url_for('shop.catalog') }}">🛍️ Перейти в каталог</a></p>
+
+{% if current_user.is_authenticated and current_user.role == 'seller' %}
+    <h2>Загрузить 3D-модель</h2>
+    <!-- форма загрузки -->
+{% endif %}
+{% endblock %}

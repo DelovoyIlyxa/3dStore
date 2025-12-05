@@ -1,0 +1,335 @@
+{% extends "base.html" %}
+
+{% block title %}{{ product.title }}{% endblock %}
+
+{% block content %}
+<style>
+    .product-header {
+        display: flex;
+        gap: 40px;
+        margin: 32px 0;
+    }
+
+    @media (max-width: 900px) {
+        .product-header {
+            flex-direction: column;
+        }
+    }
+
+    .product-preview {
+        flex: 1;
+        background: var(--card-bg);
+        border-radius: 16px;
+        height: 500px;
+        overflow: hidden;
+        border: 1px solid var(--border);
+    }
+
+    .product-info {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .product-title {
+        font-size: 32px;
+        font-weight: 700;
+        margin-bottom: 12px;
+        line-height: 1.2;
+    }
+
+    .product-price {
+        font-size: 36px;
+        font-weight: 800;
+        background: linear-gradient(90deg, #ff2a6d, #ff9e4d);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        margin: 16px 0;
+    }
+
+    .rating {
+        color: #ffc107;
+        margin: 8px 0;
+    }
+
+    .tabs {
+        display: flex;
+        border-bottom: 1px solid var(--border);
+        margin: 24px 0;
+    }
+
+    .tab {
+        padding: 12px 24px;
+        cursor: pointer;
+        color: var(--text-secondary);
+        font-weight: 500;
+    }
+
+    .tab.active {
+        color: var(--accent);
+        border-bottom: 2px solid var(--accent);
+    }
+
+    .tab-content {
+        display: none;
+    }
+
+    .tab-content.active {
+        display: block;
+        animation: fadeIn 0.3s;
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+        }
+
+        to {
+            opacity: 1;
+        }
+    }
+
+    .seller-card {
+        display: flex;
+        align-items: center;
+        background: var(--card-bg);
+        padding: 16px;
+        border-radius: 12px;
+        margin-top: 24px;
+        border: 1px solid var(--border);
+    }
+
+    .seller-avatar {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #ff2a6d, #4ecdc4);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        margin-right: 16px;
+    }
+
+    .btn-buy {
+        background: linear-gradient(90deg, #ff2a6d, #ff9e4d);
+        border: none;
+        padding: 16px;
+        font-size: 18px;
+        font-weight: 700;
+        margin: 24px 0;
+        box-shadow: 0 4px 20px rgba(255, 42, 109, 0.3);
+        transition: all 0.3s;
+    }
+
+    .btn-buy:hover {
+        transform: scale(1.03);
+        box-shadow: 0 6px 25px rgba(255, 42, 109, 0.5);
+    }
+
+    .specs-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .specs-table td {
+        padding: 10px 0;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .specs-table td:first-child {
+        color: var(--text-secondary);
+        width: 40%;
+    }
+</style>
+
+<div class="product-header">
+    <!-- 3D Preview -->
+    <div class="product-preview">
+        {% if product.file_path.endswith('.glb') %}
+        <model-viewer src="/static/uploads/{{ product.file_path }}" alt="{{ product.title }}" auto-rotate
+            camera-controls style="width:100%; height:100%;" shadow-intensity="1">
+        </model-viewer>
+        <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+        {% elif product.preview_image %}
+        <img src="{{ url_for('static', filename='uploads/' + product.preview_image) }}" alt="{{ product.title }}"
+            style="width:100%; height:100%; object-fit:cover;">
+        {% else %}
+        <div
+            style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:60px; color:#555;">
+            <i class="fas fa-cube"></i>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Info -->
+    <div class="product-info">
+        <h1 class="product-title">{{ product.title }}</h1>
+
+        <div class="rating">
+            <i class="fas fa-star"></i>
+            <i class="fas fa-star"></i>
+            <i class="fas fa-star"></i>
+            <i class="fas fa-star"></i>
+            <i class="fas fa-star-half-alt"></i>
+            <span style="color:var(--text-secondary); margin-left:8px;">4.5 (24 отзыва)</span>
+        </div>
+
+        <div class="product-price">{{ "%.2f"|format(product.price) }} $</div>
+
+        <!-- Кнопка покупки -->
+        <!-- Кнопка скачивания с анимацией -->
+        {% if current_user.is_authenticated %}
+        {% set is_owner = (current_user.id == product.seller_id) %}
+        {% set is_admin = (current_user.role == 'admin') %}
+        {% set is_purchased = (product.purchases|selectattr('user_id', 'equalto', current_user.id)|list|length > 0) %}
+
+        {% if is_owner or is_admin %}
+        <!-- Владелец или админ -->
+        <form method="POST" action="{{ url_for('shop.download_trigger', product_id=product.id) }}"
+            style="margin:24px 0;">
+            <button type="submit" class="btn-buy"
+                style="width:100%; background:linear-gradient(90deg, #28a745, #20c997);">
+                <i class="fas fa-download"></i> Скачать (владелец)
+            </button>
+        </form>
+        {% elif is_purchased %}
+        <!-- Уже куплено -->
+        <form method="POST" action="{{ url_for('shop.download_trigger', product_id=product.id) }}"
+            style="margin:24px 0;">
+            <button type="submit" class="btn-buy"
+                style="width:100%; background:linear-gradient(90deg, #17a2b8, #00d9ff);">
+                <i class="fas fa-check-circle"></i> Уже куплено — скачать
+            </button>
+        </form>
+        {% else %}
+        <!-- Можно купить -->
+        <form method="POST" action="{{ url_for('shop.checkout', product_id=product.id) }}" style="margin:24px 0;">
+            <button type="submit" class="btn-buy" style="width:100%;">
+                <i class="fas fa-shopping-cart"></i> Купить за {{ "%.2f"|format(product.price) }} $
+            </button>
+        </form>
+        {% endif %}
+        {% else %}
+        <!-- Не авторизован -->
+        <a href="{{ url_for('auth.login') }}" class="btn-buy" style="width:100%; display:block; text-align:center;">
+            <i class="fas fa-lock"></i> Войдите, чтобы купить
+        </a>
+
+        <!-- Прогресс-бар -->
+        <div id="progressContainer" style="display:none; margin-top:16px;">
+            <div style="height:8px; background:var(--card-bg); border-radius:4px; overflow:hidden;">
+                <div id="progressBar"
+                    style="height:100%; width:0%; background:linear-gradient(90deg, #4ecdc4, #ff2a6d); transition: width 0.3s;">
+                </div>
+            </div>
+            <div id="progressText"
+                style="text-align:center; margin-top:8px; font-size:14px; color:var(--text-secondary);">Подготовка
+                файла...</div>
+        </div>
+
+        <script>
+            function startDownload(productId) {
+                // Показываем прогресс
+                const progressContainer = document.getElementById('progressContainer');
+                progressContainer.style.display = 'block';
+
+                // Обновляем текст прогресса
+                document.getElementById('progressText').textContent = 'Скачивание 0%';
+
+                // Имитация прогресса
+                let progress = 0;
+                const interval = setInterval(() => {
+                    progress += 5;
+                    document.getElementById('progressBar').style.width = progress + '%';
+                    document.getElementById('progressText').textContent = `Скачивание ${progress}%`;
+
+                    if (progress >= 100) {
+                        clearInterval(interval);
+                        document.getElementById('progressText').textContent = 'Готово!';
+
+                        // Через 0.5с  редирект на скачивание
+                        setTimeout(() => {
+                            window.location.href = '/shop/' + productId + '/download';
+                            // Скрываем прогресс через 1.5с
+                            setTimeout(() => {
+                                progressContainer.style.display = 'none';
+                            }, 1500);
+                        }, 500);
+                    }
+                }, 100);
+            }
+        </script>
+        {% endif %}
+
+        <!-- Вкладки -->
+        <div class="tabs">
+            <div class="tab active" data-tab="desc">Описание</div>
+            <div class="tab" data-tab="specs">Характеристики</div>
+            <div class="tab" data-tab="reviews">Отзывы (24)</div>
+        </div>
+
+        <div class="tab-content active" id="tab-desc">
+            <p>{{ product.description or 'Описание отсутствует.' }}</p>
+        </div>
+
+        <div class="tab-content" id="tab-specs">
+            <table class="specs-table">
+                <tr>
+                    <td>Формат файла</td>
+                    <td><code>{{ product.file_path.split('.')[-1].upper() }}</code></td>
+                </tr>
+                <tr>
+                    <td>Дата загрузки</td>
+                    <td>{{ product.created_at.strftime('%d.%m.%Y') }}</td>
+                </tr>
+                <tr>
+                    <td>Размер файла</td>
+                    <td>~2.4 MB</td>
+                </tr>
+                <tr>
+                    <td>Полигоны</td>
+                    <td>12,450</td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="tab-content" id="tab-reviews">
+            <p>Отзывы появятся после покупки.</p>
+        </div>
+
+        <!-- Продавец -->
+        <div class="seller-card">
+            <div class="seller-avatar">
+                {{ product.seller.email[0]|upper }}
+            </div>
+            <div>
+                <div style="font-weight:600;">{{ product.seller.email.split('@')[0] }}</div>
+                <div style="color:var(--text-secondary); font-size:14px;">Продавец • 12 моделей</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- JS для вкладок -->
+<script>
+    document.querySelectorAll('.tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            // Убираем active у всех
+            document.querySelectorAll('.tab, .tab-content').forEach(el => {
+                el.classList.remove('active');
+            });
+            // Добавляем active текущей
+            tab.classList.add('active');
+            const target = tab.getAttribute('data-tab');
+            document.getElementById(`tab-${target}`).classList.add('active');
+        });
+    });
+</script>
+
+<a href="{{ url_for('shop.catalog') }}" class="btn"
+    style="display:inline-block; margin-top:20px; color:var(--accent); background:#393939; margin-bottom: 25px;">
+    <i class="fas fa-arrow-left"></i> Вернуться в каталог
+</a>
+{% endblock %}

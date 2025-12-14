@@ -1,4 +1,16 @@
+<!-- views/shop/product_detail.html-->
 {% extends "base.html" %}
+
+<!-- Макросы — ДО block content -->
+{% macro _n_reviews(n) -%}
+{%- if n == 1 -%}
+отзыв
+{%- elif n in [2,3,4] -%}
+отзыва
+{%- else -%}
+отзывов
+{%- endif -%}
+{%- endmacro %}
 
 {% block title %}{{ product.title }}{% endblock %}
 
@@ -142,7 +154,54 @@
         color: var(--text-secondary);
         width: 40%;
     }
+
+    /* Анимация кнопки "Оценить" */
+    #reviewBtn {
+        transition: all 0.3s ease;
+    }
+
+    #reviewBtn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(255, 204, 0, 0.3);
+        background: rgba(255, 204, 0, 0.25);
+    }
 </style>
+
+<a href="{{ url_for('shop.catalog') }}" class="btn"
+    style="display:inline-block; margin-top:15px; color:var(--accent); background:#393939;">
+    <i class="fas fa-arrow-left"></i> Вернуться в каталог
+</a>
+
+<!-- Управление моделью (только для владельца или админа) -->
+{% if current_user.is_authenticated and (current_user.id == product.seller_id or current_user.role == 'admin') %}
+<div style="margin-top:32px; padding:24px; background:rgba(40,40,40,0.3); border-radius:12px; border:1px solid var(--border);">
+    <h3 style="margin:0 0 20px; font-size:20px; color:var(--accent);">
+        <i class="fas fa-toolbox"></i> Управление моделью
+    </h3>
+    
+    <div style="display:flex; gap:12px; flex-wrap:wrap;">
+        <!-- Кнопка редактирования -->
+        <a href="{{ url_for('shop.edit_product', product_id=product.id) }}" 
+           class="btn" 
+           style="background:rgba(78,205,196,0.15); color:#4ecdc4; border:1px solid #4ecdc4; padding:10px 20px; font-size:15px;">
+            <i class="fas fa-edit"></i> Редактировать
+        </a>
+        
+        <!-- Кнопка удаления -->
+        <button type="button" 
+                class="btn" 
+                style="background:rgba(255,42,109,0.15); color:var(--accent); border:1px solid var(--accent); padding:10px 20px; font-size:15px;"
+                onclick="if(confirm('Удалить модель?\nЭто действие нельзя отменить.')) { document.getElementById('deleteForm').submit(); }">
+            <i class="fas fa-trash-alt"></i> Удалить
+        </button>
+        
+        <!-- Форма для удаления (скрытая) -->
+        <form id="deleteForm" method="POST" action="{{ url_for('shop.delete_product', product_id=product.id) }}" style="display:none;">
+            <!-- Защита от CSRF не обязательна для учебного проекта, но можно добавить -->
+        </form>
+    </div>
+</div>
+{% endif %}
 
 <div class="product-header">
     <!-- 3D Preview -->
@@ -167,107 +226,245 @@
     <div class="product-info">
         <h1 class="product-title">{{ product.title }}</h1>
 
-        <div class="rating">
-            <i class="fas fa-star"></i>
-            <i class="fas fa-star"></i>
-            <i class="fas fa-star"></i>
-            <i class="fas fa-star"></i>
-            <i class="fas fa-star-half-alt"></i>
-            <span style="color:var(--text-secondary); margin-left:8px;">4.5 (24 отзыва)</span>
+        <!-- Динамический рейтинг -->
+        <div class="rating" style="margin:8px 0;">
+            {% set count = product.reviews.count() %}
+            {% set avg = avg_rating or 0 %}
+            <span style="font-size:20px; color:#ffc107; margin-right:8px;">
+                {% if count > 0 %}
+                {{ "%.1f"|format(avg) }} <i class="fas fa-star"></i>
+                {% else %}
+                <i class="far fa-star"></i> —
+                {% endif %}
+            </span>
+            <span style="color:var(--text-secondary);">
+                {% if count > 0 %}
+                {{ count }}
+                {%- if count == 1 -%}&nbspотзыв
+                {%- elif count in [2,3,4] -%}&nbspотзыва
+                {%- else -%}&nbspотзывов
+                {%- endif -%}
+                {% else %}
+                Нет отзывов
+                {% endif %}
+            </span>
         </div>
 
         <div class="product-price">{{ "%.2f"|format(product.price) }} $</div>
 
         <!-- Кнопка покупки -->
-        <!-- Кнопка скачивания с анимацией -->
-        {% if current_user.is_authenticated %}
-        {% set is_owner = (current_user.id == product.seller_id) %}
-        {% set is_admin = (current_user.role == 'admin') %}
-        {% set is_purchased = (product.purchases|selectattr('user_id', 'equalto', current_user.id)|list|length > 0) %}
+        <!-- Кнопка действия (единый компонент) -->
+        <!-- Кнопка действия (единый стиль для всех) -->
+        <div style="margin:24px 0;">
+            {% if current_user.is_authenticated %}
+            {% set is_owner = (current_user.id == product.seller_id) %}
+            {% set is_admin = (current_user.role == 'admin') %}
+            {% set is_purchased = (product.purchases|selectattr('user_id', 'equalto', current_user.id)|list|length >
+            0)%}
+            {# user_review уже передан из контроллера #}
+            {% set can_review = is_purchased and not user_review and not is_owner %}
 
-        {% if is_owner or is_admin %}
-        <!-- Владелец или админ -->
-        <form method="POST" action="{{ url_for('shop.download_trigger', product_id=product.id) }}"
-            style="margin:24px 0;">
-            <button type="submit" class="btn-buy"
-                style="width:100%; background:linear-gradient(90deg, #28a745, #20c997);">
-                <i class="fas fa-download"></i> Скачать (владелец)
-            </button>
-        </form>
-        {% elif is_purchased %}
-        <!-- Уже куплено -->
-        <form method="POST" action="{{ url_for('shop.download_trigger', product_id=product.id) }}"
-            style="margin:24px 0;">
-            <button type="submit" class="btn-buy"
-                style="width:100%; background:linear-gradient(90deg, #17a2b8, #00d9ff);">
-                <i class="fas fa-check-circle"></i> Уже куплено — скачать
-            </button>
-        </form>
-        {% else %}
-        <!-- Можно купить -->
-        <form method="POST" action="{{ url_for('shop.checkout', product_id=product.id) }}" style="margin:24px 0;">
-            <button type="submit" class="btn-buy" style="width:100%;">
-                <i class="fas fa-shopping-cart"></i> Купить за {{ "%.2f"|format(product.price) }} $
-            </button>
-        </form>
-        {% endif %}
-        {% else %}
-        <!-- Не авторизован -->
-        <a href="{{ url_for('auth.login') }}" class="btn-buy" style="width:100%; display:block; text-align:center;">
-            <i class="fas fa-lock"></i> Войдите, чтобы купить
-        </a>
+            <!-- Основная кнопка: купить / скачать -->
+            <form id="actionForm" method="POST"
+                action="{% if is_owner or is_admin or is_purchased %}{{ url_for('shop.download_trigger', product_id=product.id) }}{% else %}{{ url_for('shop.checkout', product_id=product.id) }}{% endif %}">
+                <button type="submit" id="actionBtn" class="btn-buy"
+                    style="width:100%; display:flex; align-items:center; justify-content:center; gap:12px; padding:16px; font-size:18px; font-weight:700;">
+                    {% if is_owner or is_admin %}
+                    <i class="fas fa-download"></i>
+                    <span>Скачать (владелец)</span>
+                    {% elif is_purchased %}
+                    <i class="fas fa-check-circle"></i>
+                    <span>Скачать (куплено)</span>
+                    {% else %}
+                    <i class="fas fa-shopping-cart"></i>
+                    <span>Купить за {{ "%.2f"|format(product.price) }} $</span>
+                    {% endif %}
+                </button>
+            </form>
 
-        <!-- Прогресс-бар -->
-        <div id="progressContainer" style="display:none; margin-top:16px;">
-            <div style="height:8px; background:var(--card-bg); border-radius:4px; overflow:hidden;">
-                <div id="progressBar"
-                    style="height:100%; width:0%; background:linear-gradient(90deg, #4ecdc4, #ff2a6d); transition: width 0.3s;">
+            <!-- Кнопка + мини-форма оценки -->
+            {% if can_review %}
+            <div style="text-align:center; margin-top:12px;">
+                <button type="button" class="btn"
+                    style="background:rgba(255,204,0,0.15); border:1px solid #ffc107; color:#ffc107; padding:10px 20px; font-weight:600; font-size:15px;"
+                    onclick="document.getElementById('reviewForm').style.display='block'; this.style.display='none';">
+                    <i class="fas fa-star"></i> Оценить модель
+                </button>
+
+                <form id="reviewForm" method="POST" action="{{ url_for('shop.add_review', product_id=product.id) }}"
+                    style="display:none; margin-top:16px; padding:16px; background:var(--card-bg); border-radius:10px; border:1px solid var(--border);">
+                    <input type="hidden" name="rating" id="ratingInput" value="5">
+                    <div style="font-weight:600; margin-bottom:12px;"><!-- Пример: проверка, оценил ли пользователь -->
+                        {% if user_review %}
+                        <div>Ваша оценка: {{ user_review.rating }} ★</div>
+                        {% endif %}
+                    </div>
+                    <div id="starRating" style="font-size:28px; margin-bottom:20px; cursor:pointer;">
+                        <i class="fas fa-star" data-value="1"></i>
+                        <i class="fas fa-star" data-value="2"></i>
+                        <i class="fas fa-star" data-value="3"></i>
+                        <i class="fas fa-star" data-value="4"></i>
+                        <i class="fas fa-star" data-value="5"></i>
+                    </div>
+                    <button type="submit" class="btn"
+                        style="width:100%; background:linear-gradient(90deg, #ff2a6d, #ff9e4d);">
+                        <i class="fas fa-paper-plane"></i> Отправить
+                    </button>
+                </form>
+            </div>
+            {% elif user_review and not is_owner %}
+            <div style="text-align:center; margin-top:12px;">
+                <div
+                    style="background:rgba(40,167,69,0.15); border:1px solid #28a745; color:#4cd964; padding:10px; border-radius:8px; font-weight:600; display:inline-flex; align-items:center; gap:8px;">
+                    <i class="fas fa-check-circle"></i> Спасибо за оценку!
                 </div>
             </div>
-            <div id="progressText"
-                style="text-align:center; margin-top:8px; font-size:14px; color:var(--text-secondary);">Подготовка
-                файла...</div>
+            {% endif %}
+
+            <!-- Прогресс-бар -->
+            <div id="progressContainer" style="display:none; margin-top:16px;">
+                <div style="height:6px; background:var(--card-bg); border-radius:3px; overflow:hidden;">
+                    <div id="progressBar"
+                        style="height:100%; width:0%; background:linear-gradient(90deg, #ff2a6d, #ff9e4d); transition: width 0.3s;">
+                    </div>
+                </div>
+                <div id="progressText"
+                    style="text-align:center; margin-top:8px; font-size:14px; color:var(--text-secondary);">
+                    Подготовка...
+                </div>
+            </div>
+            {% else %}
+            <!-- Не авторизован: такая же кнопка, но ссылка -->
+            <a href="{{ url_for('auth.login') }}" id="actionBtn" class="btn-buy"
+                style="width:100%; display:flex; align-items:center; justify-content:center; gap:12px; padding:16px; font-size:18px; font-weight:700; text-decoration: none;">
+                <i class="fas fa-lock"></i>
+                <span id="btnText">Войдите, чтобы купить</span>
+            </a>
+            <!-- Прогресс-бар скрыт (не нужен для GET-ссылки) -->
+            <div id="progressContainer" style="display:none;"></div>
+            {% endif %}
         </div>
 
+        <!-- Единый JS — работает только если есть форма -->
         <script>
-            function startDownload(productId) {
-                // Показываем прогресс
+            document.addEventListener('DOMContentLoaded', function () {
+                const form = document.getElementById('actionForm');
+                const btn = document.getElementById('actionBtn');
                 const progressContainer = document.getElementById('progressContainer');
-                progressContainer.style.display = 'block';
+                const progressBar = document.getElementById('progressBar');
+                const progressText = document.getElementById('progressText');
 
-                // Обновляем текст прогресса
-                document.getElementById('progressText').textContent = 'Скачивание 0%';
+                // Сохраняем исходный HTML кнопки для восстановления
+                let originalBtnHTML = btn ? btn.innerHTML : '';
 
-                // Имитация прогресса
-                let progress = 0;
-                const interval = setInterval(() => {
-                    progress += 5;
-                    document.getElementById('progressBar').style.width = progress + '%';
-                    document.getElementById('progressText').textContent = `Скачивание ${progress}%`;
+                if (!form || !btn) return;
 
-                    if (progress >= 100) {
-                        clearInterval(interval);
-                        document.getElementById('progressText').textContent = 'Готово!';
+                form.addEventListener('submit', function (e) {
+                    e.preventDefault();
 
-                        // Через 0.5с  редирект на скачивание
-                        setTimeout(() => {
-                            window.location.href = '/shop/' + productId + '/download';
-                            // Скрываем прогресс через 1.5с
-                            setTimeout(() => {
-                                progressContainer.style.display = 'none';
-                            }, 1500);
-                        }, 500);
+                    // Сохраняем action — чтобы понять, что за действие
+                    const action = form.getAttribute('action');
+                    const isDownload = action && action.includes('/download-trigger');
+
+                    // Меняем кнопку на "обработку"
+                    btn.disabled = true;
+                    btn.innerHTML = `
+            <i class="fas fa-spinner fa-spin"></i>
+            <span>Обработка...</span>
+        `;
+
+                    if (progressContainer && progressBar && progressText) {
+                        progressContainer.style.display = 'block';
+                        progressText.textContent = 'Начинаем...';
+                        progressBar.style.width = '10%';
                     }
-                }, 100);
-            }
+
+                    // Имитация прогресса
+                    setTimeout(() => {
+                        if (progressText) progressText.textContent = 'Готовим файл...';
+                        if (progressBar) progressBar.style.width = '60%';
+
+                        setTimeout(() => {
+                            if (progressText) progressText.textContent = 'Запуск скачивания...';
+                            if (progressBar) progressBar.style.width = '100%';
+
+                            setTimeout(() => {
+                                if (isDownload) {
+                                    // Для скачивания: отправляем форму, но ВОССТАНАВЛИВАЕМ кнопку через 1.5с
+                                    const formData = new FormData(form);
+                                    fetch(action, {
+                                        method: 'POST',
+                                        body: formData,
+                                        // credentials: 'same-origin' // если нужно (обычно Flask сам проставляет)
+                                    }).then(response => {
+                                        if (response.ok && response.headers.get('Content-Disposition')?.includes('attachment')) {
+                                            // Запускаем скачивание вручную
+                                            return response.blob().then(blob => {
+                                                const url = window.URL.createObjectURL(blob);
+                                                const a = document.createElement('a');
+                                                a.href = url;
+                                                // Извлекаем имя файла из Content-Disposition (RFC 5987 совместимо)
+                                                const cd = response.headers.get('content-disposition');
+                                                let filename = 'model.glb'; // fallback
+
+                                                if (cd) {
+                                                    // Сначала пробуем filename* (UTF-8)
+                                                    const utf8Match = cd.match(/filename\*=UTF-8''(.+?)(;|$)/i);
+                                                    if (utf8Match) {
+                                                        try {
+                                                            filename = decodeURIComponent(utf8Match[1]);
+                                                        } catch (e) {
+                                                            console.warn('Failed to decode UTF-8 filename', e);
+                                                        }
+                                                    } else {
+                                                        // Потом filename="..."
+                                                        const asciiMatch = cd.match(/filename="?([^";]+)"?/i);
+                                                        if (asciiMatch) {
+                                                            filename = asciiMatch[1];
+                                                        }
+                                                    }
+                                                }
+
+                                                a.download = filename; // ← ПРАВИЛЬНО
+                                                document.body.appendChild(a);
+                                                a.click();
+                                                window.URL.revokeObjectURL(url);
+                                                a.remove();
+                                            });
+                                        } else {
+                                            // Если не файл — редиректим как обычно
+                                            window.location.href = action;
+                                        }
+                                    }).catch(err => {
+                                        console.error('Ошибка скачивания:', err);
+                                        alert('Не удалось скачать файл');
+                                    }).finally(() => {
+                                        // Восстанавливаем кнопку через 1.2с (чтобы анимация успела "уйти")
+                                        setTimeout(() => {
+                                            if (btn) {
+                                                btn.disabled = false;
+                                                btn.innerHTML = originalBtnHTML;
+                                            }
+                                            if (progressContainer) {
+                                                progressContainer.style.display = 'none';
+                                            }
+                                        }, 1200);
+                                    });
+                                } else {
+                                    // Для покупки: обычная отправка → редирект
+                                    form.submit();
+                                }
+                            }, 400);
+                        }, 600);
+                    }, 300);
+                });
+            });
         </script>
-        {% endif %}
 
         <!-- Вкладки -->
         <div class="tabs">
             <div class="tab active" data-tab="desc">Описание</div>
             <div class="tab" data-tab="specs">Характеристики</div>
-            <div class="tab" data-tab="reviews">Отзывы (24)</div>
         </div>
 
         <div class="tab-content active" id="tab-desc">
@@ -285,28 +482,132 @@
                     <td>{{ product.created_at.strftime('%d.%m.%Y') }}</td>
                 </tr>
                 <tr>
-                    <td>Размер файла</td>
-                    <td>~2.4 MB</td>
+                    <td>Имя файла</td>
+                    <td>{{ product.file_path }}</td>
                 </tr>
                 <tr>
-                    <td>Полигоны</td>
-                    <td>12,450</td>
+                    <td>Превью</td>
+                    <td>{{ 'Да' if product.preview_image else 'Нет' }}</td>
                 </tr>
             </table>
         </div>
 
-        <div class="tab-content" id="tab-reviews">
-            <p>Отзывы появятся после покупки.</p>
-        </div>
+        <div>
+            <div class="tab-content" id="tab-reviews">
+                <!-- Вкладка отзывов -->
+                <div class="tab-content" id="tab-reviews" style="scroll-margin-top: 80px;">
+                    <div id="reviewSection"></div>
+                    <!-- Средний рейтинг -->
+                    <div style="margin-bottom:24px;">
+                        <div style="font-size:28px; font-weight:700;">
+                            {{ "%.1f"|format(avg_rating or 0) }}
+                            <span style="color:#ffc107;">★</span>
+                        </div>
+                        <div style="color:var(--text-secondary);">{{ product.reviews.count() }} {{
+                            _n_reviews(product.reviews.count()) }}</div>
 
-        <!-- Продавец -->
-        <div class="seller-card">
-            <div class="seller-avatar">
-                {{ product.seller.email[0]|upper }}
+                        <!-- Звёзды (статичные) -->
+                        <div style="margin-top:8px; font-size:20px; color:#ffc107;">
+                            {% set full_stars = avg_rating|int %}
+                            {% set half_star = avg_rating - full_stars >= 0.5 %}
+                            {% for i in range(5) %}
+                            {% if i < full_stars %} <i class="fas fa-star"></i>
+                                {% elif i == full_stars and half_star %}
+                                <i class="fas fa-star-half-alt"></i>
+                                {% else %}
+                                <i class="far fa-star"></i>
+                                {% endif %}
+                                {% endfor %}
+                        </div>
+                    </div>
+
+                    <!-- Оценка от текущего пользователя -->
+                    {% if current_user.is_authenticated %}
+                    {# user_review уже передан из контроллера #}
+                    {% set can_review = current_user.is_authenticated and not user_review and
+                    (product.purchases|selectattr('user_id', 'equalto', current_user.id)|list|length > 0) %}
+
+                    {% if can_review %}
+                    <div
+                        style="background:var(--card-bg); border-radius:12px; padding:20px; border:1px solid var(--border);">
+                        <h3 style="margin:0 0 16px;">Оцените модель</h3>
+                        <p style="color:var(--text-secondary); margin-bottom:16px;">
+                            Поставьте оценку от 1 до 5 звёзд — это поможет другим покупателям.
+                        </p>
+
+                        <form id="reviewForm" method="POST"
+                            action="{{ url_for('shop.add_review', product_id=product.id) }}">
+                            <input type="hidden" name="rating" id="ratingInput" value="5">
+
+                            <!-- Интерактивные звёзды -->
+                            <div id="starRating" style="font-size:32px; margin-bottom:20px; cursor:pointer;">
+                                <i class="fas fa-star" data-value="1"></i>
+                                <i class="fas fa-star" data-value="2"></i>
+                                <i class="fas fa-star" data-value="3"></i>
+                                <i class="fas fa-star" data-value="4"></i>
+                                <i class="fas fa-star" data-value="5"></i>
+                            </div>
+
+                            <button type="submit" class="btn"
+                                style="width:100%; background:linear-gradient(90deg, #ff2a6d, #ff9e4d);">
+                                <i class="fas fa-paper-plane"></i> Отправить оценку
+                            </button>
+                        </form>
+                    </div>
+                    {% elif user_review %}
+                    <div
+                        style="background:rgba(40, 167, 69, 0.1); border:1px solid #28a745; border-radius:12px; padding:16px;">
+                        <div style="font-weight:600; color:#4cd964; margin-bottom:6px;">
+                            <i class="fas fa-check-circle"></i> Вы уже оценили эту модель
+                        </div>
+                        <div style="font-size:20px; color:#ffc107;">
+                            {% for i in range(5) %}
+                            <i class="{{ 'fas fa-star' if i < user_review.rating else 'far fa-star' }}"></i>
+                            {% endfor %}
+                            ({{ user_review.rating }})
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% endif %}
+
+                    <!-- Список оценок (минималистично) -->
+                    {% if product.reviews.count() > 0 %}
+                    <div style="margin-top:32px;">
+                        <h3>Оценки покупателей</h3>
+                        {% for review in reviews %}
+                        <div
+                            style="display:flex; gap:12px; margin:16px 0; padding-bottom:16px; border-bottom:1px solid var(--border);">
+                            <strong>{{ review.user.email[0]|upper }}</strong>
+                            <span style="color:#ffc107;">
+                                {% for i in range(5) %}
+                                <i class="{{ 'fas fa-star' if i < review.rating else 'far fa-star' }}"></i>
+                                {% endfor %}
+                            </span>
+                            <div>{{ review.created_at.strftime('%d.%m.%Y') }}</div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Вспомогательная функция для склонения -->
+                {% macro _n_reviews(n) -%}
+                {%- if n % 10 == 1 and n % 100 != 11 -%} отзыв
+                {%- elif n % 10 in [2,3,4] and n % 100 not in [12,13,14] -%} отзыва
+                {%- else -%} отзывов
+                {%- endif -%}
+                {%- endmacro %}
             </div>
-            <div>
-                <div style="font-weight:600;">{{ product.seller.email.split('@')[0] }}</div>
-                <div style="color:var(--text-secondary); font-size:14px;">Продавец • 12 моделей</div>
+
+            <!-- Продавец -->
+            <div class="seller-card">
+                <div class="seller-avatar">
+                    {{ product.seller.email[0]|upper }}
+                </div>
+                <div>
+                    <div style="font-weight:600;">{{ product.seller.email.split('@')[0] }}</div>
+                    <div style="color:var(--text-secondary); font-size:14px;">Продавец • 12 моделей</div>
+                </div>
             </div>
         </div>
     </div>
@@ -328,8 +629,48 @@
     });
 </script>
 
-<a href="{{ url_for('shop.catalog') }}" class="btn"
-    style="display:inline-block; margin-top:20px; color:var(--accent); background:#393939; margin-bottom: 25px;">
-    <i class="fas fa-arrow-left"></i> Вернуться в каталог
-</a>
+<script>
+    // Интерактивные звёзды
+    document.addEventListener('DOMContentLoaded', function () {
+        const starContainer = document.getElementById('starRating');
+        const ratingInput = document.getElementById('ratingInput');
+
+        if (starContainer && ratingInput) {
+            const stars = starContainer.querySelectorAll('i');
+            let currentRating = 5;
+
+            // Подсветка при наведении
+            starContainer.addEventListener('mouseover', function (e) {
+                if (e.target.tagName === 'I') {
+                    const value = parseInt(e.target.getAttribute('data-value'));
+                    highlightStars(value);
+                }
+            });
+
+            starContainer.addEventListener('mouseout', function () {
+                highlightStars(currentRating);
+            });
+
+            starContainer.addEventListener('click', function (e) {
+                if (e.target.tagName === 'I') {
+                    currentRating = parseInt(e.target.getAttribute('data-value'));
+                    ratingInput.value = currentRating;
+                    highlightStars(currentRating);
+                }
+            });
+
+            function highlightStars(value) {
+                stars.forEach((star, i) => {
+                    if (i < value) {
+                        star.className = 'fas fa-star';
+                    } else {
+                        star.className = 'far fa-star';
+                    }
+                });
+            }
+        }
+    });
+</script>
+
+
 {% endblock %}

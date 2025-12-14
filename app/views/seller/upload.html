@@ -1,4 +1,4 @@
-<!--upload.html -->
+<!-- view/seller/upload.html -->
 {% extends "base.html" %}
 
 {% block title %}Загрузить 3D-модель{% endblock %}
@@ -165,6 +165,7 @@
     <!-- Шаг 2: Файлы -->
     <div class="step-content" id="content2" style="display:none;">
         <h2 style="margin-bottom:24px;">Загрузите файлы</h2>
+        
 
         <div class="form-group">
             <label>3D-модель (.glb, .obj, .fbx) *</label>
@@ -232,13 +233,12 @@
         document.getElementById(`content${step}`).style.display = 'block';
 
         document.querySelectorAll('.step').forEach((el, i) => {
-            el.classList.toggle('active', i < step);
+            el.classList.toggle('active', i + 1 === step); // ← фикс: i+1, т.к. step начинается с 1
         });
         currentStep = step;
     }
 
     function nextStep(from) {
-        // Валидация шага 1
         if (from === 1) {
             const title = document.getElementById('title').value;
             const price = document.getElementById('price').value;
@@ -289,7 +289,6 @@
         const reader = new FileReader();
         reader.onload = e => {
             if (isModel && file.name.endsWith('.glb')) {
-                // Для GLB показываем 3Dиконку
                 preview.innerHTML = `
                 <div class="preview-img" style="display:flex; align-items:center; justify-content:center; background:#1a1a1a;">
                     <i class="fas fa-cube" style="font-size:40px; color:#ff2a6d;"></i>
@@ -319,16 +318,9 @@
         if (file.type.startsWith('image/')) {
             reader.readAsDataURL(file);
         } else {
-            // Для не изображений просто показываем имя
-            const fakeEvent = { target: { result: '' } };
-            reader.onload(fakeEvent);
+            reader.onload({ target: { result: '' } });
         }
     }
-
-    // Обновление финального превью
-    document.getElementById('title').addEventListener('input', updateFinal);
-    document.getElementById('price').addEventListener('input', updateFinal);
-    document.getElementById('description').addEventListener('input', updateFinal);
 
     function updateFinal() {
         document.getElementById('finalTitle').textContent = document.getElementById('title').value || 'Название';
@@ -336,57 +328,58 @@
         document.getElementById('finalDescription').textContent = document.getElementById('description').value || 'Описание...';
     }
 
-    // Отправка формы
-    document.getElementById('uploadForm').addEventListener('submit', function (e) {
+    // ЕДИНСТВЕННЫЙ submit-обработчик
+    document.getElementById('uploadForm').addEventListener('submit', async function (e) {
         e.preventDefault();
 
+        const title = document.getElementById('title').value;
+        const price = document.getElementById('price').value;
+        const modelFile = document.getElementById('modelFile').files[0];
+
+        if (!title || !price || !modelFile) {
+            alert('Заполните название, цену и выберите 3D-файл');
+            return;
+        }
+
         const formData = new FormData();
-        formData.append('title', document.getElementById('title').value);
-        formData.append('price', document.getElementById('price').value);
+        formData.append('title', title);
+        formData.append('price', price);
         formData.append('description', document.getElementById('description').value);
-        formData.append('file', document.getElementById('modelFile').files[0]);
+        formData.append('file', modelFile);
 
         const previewFile = document.getElementById('previewFile').files[0];
         if (previewFile) {
             formData.append('preview', previewFile);
         }
 
-        // Анимация кнопки
         const btn = document.getElementById('submitBtn');
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Публикация...';
         btn.disabled = true;
 
-        // Отправка (но надо fetch на /shop/upload)
-        document.getElementById('uploadForm').addEventListener('submit', async function (e) {
-            e.preventDefault();
+        try {
+            const response = await fetch("{{ url_for('shop.upload') }}", {
+                method: 'POST',
+                body: formData
+            });
 
-            const formData = new FormData(this); // ← берём данные из формы автоматически
-
-            // Анимация кнопки
-            const btn = document.getElementById('submitBtn');
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Публикация...';
-            btn.disabled = true;
-
-            try {
-                const response = await fetch("{{ url_for('shop.upload') }}", {
-                    method: 'POST',
-                    body: formData
-                });
-
-                if (response.redirected) {
-                    window.location.href = response.url;
-                } else {
-                    const text = await response.text();
-                    alert('Ошибка: ' + (text || 'Неизвестная ошибка'));
-                    btn.innerHTML = '<i class="fas fa-upload"></i> Опубликовать модель';
-                    btn.disabled = false;
-                }
-            } catch (err) {
-                alert('Ошибка сети: ' + err.message);
-                btn.innerHTML = '<i class="fas fa-upload"></i> Опубликовать модель';
-                btn.disabled = false;
+            if (response.ok && response.redirected) {
+                window.location.href = response.url;
+            } else {
+                const text = await response.text();
+                alert('Ошибка сервера: ' + (text.substring(0, 200) || 'неизвестная ошибка'));
             }
-        });
+        } catch (err) {
+            alert('Ошибка сети: ' + err.message);
+        } finally {
+            btn.innerHTML = '<i class="fas fa-upload"></i> Опубликовать модель';
+            btn.disabled = false;
+        }
     });
+
+    // Инициализация
+    document.getElementById('title').addEventListener('input', updateFinal);
+    document.getElementById('price').addEventListener('input', updateFinal);
+    document.getElementById('description').addEventListener('input', updateFinal);
+    showStep(1);
 </script>
 {% endblock %}

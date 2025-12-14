@@ -1,3 +1,4 @@
+<!-- views/base.html-->
 <!DOCTYPE html>
 <html lang="ru">
 
@@ -22,6 +23,7 @@
             --text: #e0e0e0;
             --text-secondary: #888;
             --accent: #ff2a6d;
+            /* розово-красный акцент — очень выразительно! */
             --accent-hover: #ff4da6;
             --border: #333;
         }
@@ -226,6 +228,9 @@
             <div class="header-content">
                 <a href="{{ url_for('main.index') }}" class="logo">3D<span style="color:#4ecdc4">Store</span></a>
                 <nav>
+                    {% if current_user.role == 'seller' %}
+                    <a href="{{ url_for('shop.upload') }}"><i class="fas fa-upload"></i> Загрузить</a>
+                    {% endif %}
                     <a href="{{ url_for('shop.catalog') }}"><i class="fas fa-cube"></i> Каталог</a>
                     {% if current_user.is_authenticated %}
                     <a href="#"><i class="fas fa-user"></i> {{ current_user.email[:15] }}..</a>
@@ -233,9 +238,6 @@
                     {% else %}
                     <a href="{{ url_for('auth.login') }}"><i class="fas fa-sign-in-alt"></i> Вход</a>
                     <a href="{{ url_for('auth.register') }}"><i class="fas fa-user-plus"></i> Регистрация</a>
-                    {% if current_user.is_authenticated and current_user.role == 'seller' %}
-                    <a href="{{ url_for('shop.upload_model') }}"><i class="fas fa-upload"></i> Загрузить</a>
-                    {% endif %}
                     {% endif %}
                     <button class="lang-switch" onclick="alert('Переключатель языка (демо)')">RU/EN</button>
                 </nav>
@@ -244,6 +246,37 @@
     </header>
 
     <main class="container">
+        <!-- Flash-сообщения -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div style="margin-bottom: 24px;">
+            {% for category, message in messages %}
+            <div style="
+                        padding: 12px 20px;
+                        border-radius: 8px;
+                        margin-bottom: 12px;
+                        font-weight: 500;
+                        {% if category == 'error' %}
+                            background: rgba(255, 51, 85, 0.15);
+                            border: 1px solid #ff3355;
+                            color: #ff5577;
+                        {% elif category == 'success' %}
+                            background: rgba(40, 167, 69, 0.15);
+                            border: 1px solid #28a745;
+                            color: #4cd964;
+                        {% elif category == 'info' %}
+                            background: rgba(30, 144, 255, 0.15);
+                            border: 1px solid #1e90ff;
+                            color: #6ec6ff;
+                        {% endif %}
+                    ">
+                {{ message }}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% endwith %}
+
         {% block content %}{% endblock %}
     </main>
 

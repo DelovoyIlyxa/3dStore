@@ -1,10 +1,251 @@
+<!-- views/auth/login.html -->
 {% extends "base.html" %}
+
+{% block title %}Вход — 3DStore{% endblock %}
+
 {% block content %}
-<h2>Вход</h2>
-<form method="POST">
-    <input name="email" type="email" placeholder="Email" required><br><br>
-    <input name="password" type="password" placeholder="Пароль" required><br><br>
-    <button>Войти</button>
-</form>
-<p><a href="{{ url_for('auth.register') }}">Нет аккаунта?</a></p>
+<style>
+    .auth-container {
+        max-width: 520px;
+        margin: 60px auto;
+    }
+
+    .auth-card {
+        background: var(--card-bg);
+        border-radius: 16px;
+        padding: 40px;
+        border: 1px solid var(--border);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    }
+
+    .auth-header {
+        text-align: center;
+        margin-bottom: 32px;
+    }
+
+    .auth-icon {
+        font-size: 48px;
+        margin-bottom: 16px;
+        background: linear-gradient(135deg, var(--accent), #4ecdc4);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+    }
+
+    .auth-title {
+        font-size: 32px;
+        font-weight: 700;
+        color: var(--text);
+        margin: 0;
+    }
+
+    .auth-subtitle {
+        color: var(--text-secondary);
+        font-size: 16px;
+        margin-top: 8px;
+    }
+
+    .form-group {
+        margin-bottom: 24px;
+    }
+
+    .form-label {
+        display: block;
+        font-size: 15px;
+        font-weight: 500;
+        margin-bottom: 10px;
+        color: var(--text);
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 14px 16px;
+        background: #252525;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        color: var(--text);
+        font-size: 16px;
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .form-control:focus {
+        outline: none;
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px rgba(255, 42, 109, 0.2);
+    }
+
+    .form-control::placeholder {
+        color: #666;
+    }
+
+    /* === Кнопка входа === */
+    .btn-login {
+        width: 100%;
+        padding: 16px;
+        font-size: 18px;
+        font-weight: 600;
+        background: linear-gradient(90deg, var(--accent), #4ecdc4);
+        border: none;
+        border-radius: 10px;
+        color: white;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+    }
+
+    .btn-login:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(255, 42, 109, 0.4);
+    }
+
+    .btn-login:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+    }
+
+    /* === Делитель и ссылки === */
+    .divider {
+        display: flex;
+        align-items: center;
+        margin: 28px 0;
+        color: var(--text-secondary);
+        font-size: 14px;
+    }
+
+    .divider::before,
+    .divider::after {
+        content: "";
+        flex: 1;
+        height: 1px;
+        background: var(--border);
+    }
+
+    .divider span {
+        padding: 0 16px;
+    }
+
+    .auth-links {
+        text-align: center;
+        margin-top: 24px;
+        font-size: 15px;
+        color: var(--text-secondary);
+    }
+
+    .auth-links a {
+        color: var(--accent);
+        text-decoration: none;
+        font-weight: 500;
+        margin: 0 4px;
+        transition: opacity 0.2s;
+    }
+
+    .auth-links a:hover {
+        opacity: 0.8;
+        text-decoration: underline;
+    }
+
+    /* === Дополнительно: иконки в инпутах (если хочешь) === */
+    .input-with-icon {
+        position: relative;
+    }
+
+    .input-icon {
+        position: absolute;
+        left: 16px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--text-secondary);
+        font-size: 16px;
+    }
+
+    .form-control.with-icon {
+        padding-left: 44px;
+    }
+
+    @media (max-width: 600px) {
+        .auth-card {
+            padding: 30px 20px;
+        }
+    }
+</style>
+
+<div class="auth-container">
+    <div class="auth-card">
+        <div class="auth-header">
+            <div class="auth-icon">
+                <i class="fas fa-sign-in-alt"></i>
+            </div>
+            <h1 class="auth-title">Добро пожаловать!</h1>
+            <p class="auth-subtitle">Войдите, чтобы получить доступ к своим покупкам и загрузкам</p>
+        </div>
+
+        <form method="POST" novalidate>
+            <div class="form-group">
+                <label for="email" class="form-label">📧 Email</label>
+                <div class="input-with-icon">
+                    <i class="fas fa-envelope input-icon"></i>
+                    <input
+                        type="email"
+                        id="email"
+                        name="email"
+                        class="form-control with-icon"
+                        placeholder="example@domain.com"
+                        value="{{ request.form.email or '' }}"
+                        required
+                        autocomplete="email"
+                        autocapitalize="off"
+                        autocorrect="off"
+                    >
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="password" class="form-label">🔒 Пароль</label>
+                <div class="input-with-icon">
+                    <i class="fas fa-lock input-icon"></i>
+                    <input
+                        type="password"
+                        id="password"
+                        name="password"
+                        class="form-control with-icon"
+                        placeholder="Ваш пароль"
+                        required
+                        autocomplete="current-password"
+                    >
+                </div>
+                <!-- <div style="text-align:right; margin-top:6px;">
+                    <a href="#" style="font-size:14px; color:var(--text-secondary);">Забыли пароль?</a>
+                </div> -->
+            </div>
+
+            <button type="submit" class="btn-login">
+                <i class="fas fa-right-to-bracket"></i>
+                Войти в аккаунт
+            </button>
+        </form>
+
+        <div class="divider">
+            <span>ещё нет аккаунта?</span>
+        </div>
+
+        <div class="auth-links">
+            <p>Создайте аккаунт за 30 секунд → <a href="{{ url_for('auth.register') }}"><strong>Регистрация</strong></a></p>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Защита от двойного клика
+    document.getElementById('submitBtn')?.addEventListener('click', function() {
+        const btn = this;
+        btn.disabled = true;
+        // Если форма не отправится (ошибка), разблокируем через 3 сек
+        setTimeout(() => { btn.disabled = false; }, 3000);
+    });
+</script>
 {% endblock %}

@@ -1,4 +1,5 @@
 # models/__init__.py
 from .user import User
 from .product import Product
-from .purchase import Purchase 
+from .purchase import Purchase
+from .review import Review

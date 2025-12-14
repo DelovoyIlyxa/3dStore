@@ -1,44 +1,162 @@
+<!-- views/shop/catalog-->
+
+
 {% extends "base.html" %}
 
 {% block content %}
+
+<style>
+    .card-meta,
+    .card-rating {
+        transition: opacity 0.2s;
+    }
+
+    .card:hover .card-rating {
+        opacity: 0.9;
+    }
+
+    .card-title {
+        font-size: 18px;
+        font-weight: 600;
+        margin-bottom: 8px;
+        /* Ограничиваем высоту заголовка (на случай длинных названий) */
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        height: 2.4em;
+        /* ~2 строки */
+    }
+
+    .card-description {
+        color: var(--text-secondary);
+        margin-bottom: 12px;
+        font-size: 14px;
+        line-height: 1.4;
+        /* Фиксируем высоту: 3 строки максимум */
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        height: 4.2em;
+        /* 1.4 * 3 */
+    }
+</style>
+
 <h1 style="font-size: 32px; margin: 32px 0; font-weight: 700;">Каталог 3D-моделей</h1>
 
+<!-- Строка поиска -->
+<div style="margin: 32px 0; text-align: center;">
+    <form method="GET" role="search">
+        <div style="display: flex; gap: 12px;">
+            <input
+                type="text"
+                name="q"
+                autocomplete="off" 
+                placeholder="🔍 Поиск 3D-моделей (название, описание)..."
+                value="{{ search_query }}"
+                style="
+                    flex: 1;
+                    padding: 14px 20px;
+                    background: var(--card-bg);
+                    border: 1px solid var(--border);
+                    border-radius: 10px;
+                    color: var(--text);
+                    font-size: 16px;
+                "
+            >
+            <button type="submit" class="btn" 
+                    style="padding: 14px 24px; background: color:#ff2a6d;">
+                <i class="fas fa-search"></i> Найти
+            </button>
+        </div>
+        {% if search_query %}
+            <div style="margin-top:12px; font-size:14px; color:var(--text-secondary);">
+                Найдено: {{ products|length }} {% if products|length == 1 %}модель{% elif products|length in [2,3,4] %}модели{% else %}моделей{% endif %}
+                <a href="{{ url_for('shop.catalog') }}" style="margin-left:12px; color:var(--accent);">Сбросить</a>
+            </div>
+        {% endif %}
+    </form>
+</div>
 <div class="grid">
-{% for product in products %}
+    {% for item in products %}
+    {% set product = item[0] %}
+    {% set avg_rating = item[1] or 0 %}
+    {% set review_count = item[2] or 0 %}
+
     <div class="card">
         <div class="card-img">
             {% if product.preview_image %}
-                <img src="{{ url_for('static', filename='uploads/' + product.preview_image) }}" 
-                     alt="{{ product.title }}" style="width:100%; height:100%; object-fit:cover;">
+            <img src="{{ url_for('static', filename='uploads/' + product.preview_image) }}" alt="{{ product.title }}"
+                style="width:100%; height:100%; object-fit:cover;">
             {% elif product.file_path.endswith('.glb') %}
-                <i class="fas fa-cube" style="font-size:48px; color:#ff2a6d"></i>
+            <i class="fas fa-cube" style="font-size:48px; color:#ff2a6d"></i>
             {% else %}
-                <i class="fas fa-file-alt" style="font-size:48px; color:#4ecdc4"></i>
+            <i class="fas fa-file-alt" style="font-size:48px; color:#4ecdc4"></i>
             {% endif %}
         </div>
         <div class="card-body">
             <h3 class="card-title">{{ product.title }}</h3>
-            <p style="color:var(--text-secondary); margin-bottom: 12px;">{{ product.description[:80] }}...</p>
+            <p class="card-description">
+                {{ product.description or 'Без описания' }}
+            </p>
+
+            <!-- Рейтинг -->
+            <div class="card-rating"
+                style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; font-size:14px;">
+                {% if review_count > 0 %}
+                <span style="color:#ffc107;">
+                    <i class="fas fa-star"></i> {{ "%.1f"|format(avg_rating) }}
+                </span>
+                <span style="color:var(--text-secondary);">({{ review_count }})</span>
+                {% else %}
+                <span style="color:#666;">
+                    <i class="far fa-star"></i> —
+                </span>
+                <span style="color:#666;">(0)</span>
+                {% endif %}
+            </div>
+
             <div class="card-meta">
                 <span><i class="fas fa-tag"></i> {{ "%.2f"|format(product.price) }} $</span>
                 <span><i class="fas fa-user"></i> {{ product.seller.email.split('@')[0] }}</span>
             </div>
-            <a href="{{ url_for('shop.product_detail', product_id=product.id) }}" class="btn" style="width:100%; margin-top:12px;">
+            <a href="{{ url_for('shop.product_detail', product_id=product.id) }}" class="btn"
+                style="width:100%; margin-top:12px;">
                 <i class="fas fa-eye"></i> Посмотреть
             </a>
         </div>
     </div>
-{% endfor %}
+    {% endfor %}
 </div>
 
 {% if not products %}
-    <div style="text-align:center; padding:60px; color:var(--text-secondary);">
-        <i class="fas fa-cube" style="font-size:64px; margin-bottom:20px; opacity:0.3"></i>
-        <h3>Каталог пуст</h3>
-        <p>Станьте продавцом и загрузите первую 3D-модель!</p>
-        <a href="{{ url_for('shop.upload') }}" class="btn" style="margin-top:20px;">
-            <i class="fas fa-upload"></i> Загрузить модель
-        </a>
+<div style="text-align:center; padding:60px; color:var(--text-secondary);">
+    <div style="font-size:64px; margin-bottom:24px; color:#ff2a6d;">
+        <i class="fas fa-cube"></i>
     </div>
+    <h2 style="font-size:28px; margin-bottom:16px; color:var(--text);">Каталог пуст</h2>
+    <p style="max-width:600px; margin:0 auto 32px;">
+        {% if current_user.is_authenticated and current_user.role == 'seller' %}
+        Загрузите свою первую 3D-модель и начните продавать!
+        {% else %}
+        Станьте продавцом и загрузите первую 3D-модель!
+        {% endif %}
+    </p>
+
+    {% if current_user.is_authenticated and current_user.role == 'seller' %}
+    <a href="{{ url_for('shop.upload') }}" class="btn"
+        style="background:linear-gradient(90deg, var(--accent), #ff9e4d); padding:14px 32px; font-size:18px;">
+        <i class="fas fa-upload"></i> Загрузить модель
+    </a>
+    {% else %}
+    <a href="{{ url_for('auth.login') }}" class="btn"
+        style="background:rgba(255,42,109,0.15); border:1px solid var(--accent); color:var(--accent); padding:14px 32px; font-size:18px;">
+        <i class="fas fa-user"></i> Войти как продавец
+    </a>
+    {% endif %}
+</div>
 {% endif %}
 {% endblock %}

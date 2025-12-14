@@ -1,10 +1,346 @@
+<!-- views/auth/register.html -->
 {% extends "base.html" %}
+
+{% block title %}Регистрация — 3DStore{% endblock %}
+
 {% block content %}
-<h2>Регистрация</h2>
-<form method="POST">
-    <input name="email" type="email" placeholder="Email" required><br><br>
-    <input name="password" type="password" placeholder="Пароль" minlength="6" required><br><br>
-    <button>Зарегистрироваться</button>
-</form>
-<p><a href="{{ url_for('auth.login') }}">Уже есть аккаунт?</a></p>
+<style>
+    .auth-container {
+        max-width: 520px;
+        margin: 60px auto;
+    }
+
+    .auth-card {
+        background: var(--card-bg);
+        border-radius: 16px;
+        padding: 40px;
+        border: 1px solid var(--border);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    }
+
+    .auth-header {
+        text-align: center;
+        margin-bottom: 32px;
+    }
+
+    .auth-icon {
+        font-size: 48px;
+        margin-bottom: 16px;
+        background: linear-gradient(135deg, var(--accent), #ff9e4d);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+    }
+
+    .auth-title {
+        font-size: 32px;
+        font-weight: 700;
+        color: var(--text);
+        margin: 0;
+    }
+
+    .auth-subtitle {
+        color: var(--text-secondary);
+        font-size: 16px;
+        margin-top: 8px;
+    }
+
+    .form-group {
+        margin-bottom: 24px;
+    }
+
+    .form-label {
+        display: block;
+        font-size: 15px;
+        font-weight: 500;
+        margin-bottom: 10px;
+        color: var(--text);
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 14px 16px;
+        background: #252525;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        color: var(--text);
+        font-size: 16px;
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .form-control:focus {
+        outline: none;
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px rgba(255, 42, 109, 0.2);
+    }
+
+    .form-control::placeholder {
+        color: #666;
+    }
+
+    /* === Роли === */
+    .role-selector {
+        display: flex;
+        gap: 16px;
+        margin: 16px 0 24px;
+    }
+
+    .role-option {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        padding: 20px 16px;
+        background: #252525;
+        border: 2px solid var(--border);
+        border-radius: 12px;
+        cursor: pointer;
+        transition: all 0.25s ease;
+        text-align: center;
+        color: var(--text-secondary);
+    }
+
+    .role-option:hover {
+        background: #2c2c2c;
+        border-color: #555;
+    }
+
+    .role-option.active {
+        border-color: var(--accent);
+        background: rgba(255, 42, 109, 0.08);
+        color: var(--accent);
+        transform: translateY(-2px);
+    }
+
+    .role-icon {
+        font-size: 28px;
+    }
+
+    .role-title {
+        font-weight: 600;
+        font-size: 16px;
+    }
+
+    .role-desc {
+        font-size: 13px;
+        opacity: 0.8;
+    }
+
+    .role-warning {
+        font-size: 13px;
+        color: #ffaa55;
+        text-align: center;
+        margin-top: -8px;
+        margin-bottom: 16px;
+        font-style: italic;
+    }
+
+    /* === Кнопка === */
+    .btn-register {
+        width: 100%;
+        padding: 16px;
+        font-size: 18px;
+        font-weight: 600;
+        background: linear-gradient(90deg, var(--accent), #ff9e4d);
+        border: none;
+        border-radius: 10px;
+        color: white;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+    }
+
+    .btn-register:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(255, 42, 109, 0.4);
+    }
+
+    .btn-register:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+    }
+
+    /* === Делитель и ссылки === */
+    .divider {
+        display: flex;
+        align-items: center;
+        margin: 28px 0;
+        color: var(--text-secondary);
+        font-size: 14px;
+    }
+
+    .divider::before,
+    .divider::after {
+        content: "";
+        flex: 1;
+        height: 1px;
+        background: var(--border);
+    }
+
+    .divider span {
+        padding: 0 16px;
+    }
+
+    .auth-links {
+        text-align: center;
+        margin-top: 24px;
+        font-size: 15px;
+        color: var(--text-secondary);
+    }
+
+    .auth-links a {
+        color: var(--accent);
+        text-decoration: none;
+        font-weight: 500;
+        margin: 0 4px;
+        transition: opacity 0.2s;
+    }
+
+    .auth-links a:hover {
+        opacity: 0.8;
+        text-decoration: underline;
+    }
+
+    @media (max-width: 600px) {
+        .role-selector {
+            flex-direction: column;
+        }
+
+        .auth-card {
+            padding: 30px 20px;
+        }
+    }
+</style>
+
+<div class="auth-container">
+    <div class="auth-card">
+        <div class="auth-header">
+            <div class="auth-icon">
+                <i class="fas fa-user-plus"></i>
+            </div>
+            <h1 class="auth-title">Создайте аккаунт</h1>
+            <p class="auth-subtitle">Выберите роль и начните работу</p>
+        </div>
+
+        <form method="POST" novalidate>
+            <!-- Flash-сообщения (локальные, над формой) -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            <div style="margin-bottom: 24px;">
+                {% for category, message in messages %}
+                <div style="
+                    padding: 14px 20px;
+                    border-radius: 10px;
+                    font-weight: 500;
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                    {% if category == 'error' %}
+                        background: rgba(255, 51, 85, 0.15);
+                        border: 1px solid #ff3355;
+                        color: #ff5577;
+                    {% elif category == 'success' %}
+                        background: rgba(40, 167, 69, 0.15);
+                        border: 1px solid #28a745;
+                        color: #4cd964;
+                    {% elif category == 'info' %}
+                        background: rgba(30, 144, 255, 0.15);
+                        border: 1px solid #1e90ff;
+                        color: #6ec6ff;
+                    {% endif %}
+                    ">
+                    {% if category == 'error' %}
+                    <i class="fas fa-exclamation-circle"></i>
+                    {% elif category == 'success' %}
+                    <i class="fas fa-check-circle"></i>
+                    {% elif category == 'info' %}
+                    <i class="fas fa-info-circle"></i>
+                    {% endif %}
+                    {{ message }}
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+            {% endwith %}
+            <div class="form-group">
+                <label for="email" class="form-label">📧 Email</label>
+                <input type="email" id="email" name="email" class="form-control" placeholder="example@domain.com"
+                    value="{{ request.form.email or '' }}" required autocapitalize="off" autocorrect="off">
+            </div>
+
+            <div class="form-group">
+                <label for="password" class="form-label">🔒 Пароль</label>
+                <input type="password" id="password" name="password" class="form-control"
+                    placeholder="Минимум 6 символов" required minlength="6">
+            </div>
+
+            <!-- Выбор роли -->
+            <div class="form-group">
+                <label class="form-label">👤 Выберите роль</label>
+                <div class="role-selector">
+                    <label
+                        class="role-option {% if request.form.role == 'user' or not request.form.role %}active{% endif %}">
+                        <input type="radio" name="role" value="user" style="display:none;" {% if
+                            request.form.role=='user' or not request.form.role %}checked{% endif %}>
+                        <div class="role-icon"><i class="fas fa-shopping-cart"></i></div>
+                        <div class="role-title">Покупатель</div>
+                        <div class="role-desc">Скачивайте модели</div>
+                    </label>
+                    <label class="role-option {% if request.form.role == 'seller' %}active{% endif %}">
+                        <input type="radio" name="role" value="seller" style="display:none;" {% if
+                            request.form.role=='seller' %}checked{% endif %}>
+                        <div class="role-icon"><i class="fas fa-store"></i></div>
+                        <div class="role-title">Продавец</div>
+                        <div class="role-desc">Продавайте свои модели</div>
+                    </label>
+                </div>
+                <input type="hidden" name="role" id="roleInput" value="user">
+                <p class="role-warning">
+                    ⚠️ Роль «Продавец» требует ручного подтверждения администратором
+                </p>
+            </div>
+
+            <button type="submit" class="btn-register">
+                <i class="fas fa-user-check"></i>
+                Зарегистрироваться
+            </button>
+        </form>
+
+        <div class="divider">
+            <span>или</span>
+        </div>
+
+        <div class="auth-links">
+            <p>Уже есть аккаунт? <a href="{{ url_for('auth.login') }}"><strong>Войти</strong></a></p>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Переключение роли
+    document.querySelectorAll('.role-option').forEach(option => {
+        option.addEventListener('click', function () {
+            // Снимаем active со всех
+            document.querySelectorAll('.role-option').forEach(o => o.classList.remove('active'));
+            // Добавляем текущему
+            this.classList.add('active');
+            // Выбираем radio
+            this.querySelector('input[type="radio"]').checked = true;
+        });
+    });
+
+    // Защита от двойного клика
+    document.getElementById('submitBtn')?.addEventListener('click', function () {
+        const btn = this;
+        btn.disabled = true;
+        setTimeout(() => { btn.disabled = false; }, 3000);
+    });
+</script>
 {% endblock %}

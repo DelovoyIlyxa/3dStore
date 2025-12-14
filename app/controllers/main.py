@@ -9,10 +9,3 @@ def index():
     user_agent = request.headers.get('User-Agent', 'unknown')
     current_app.logger.info(f"[MAIN] Корневой запрос: ip={ip}, user_agent='{user_agent[:50]}...', редирект в shop.catalog")
     return redirect(url_for('shop.catalog'))
-
-@main_bp.route('/test-log')
-def test_log():
-    current_app.logger.info("✅ Тестовый лог: INFO")
-    current_app.logger.warning("⚠️ Тестовый лог: WARNING")
-    current_app.logger.error("❌ Тестовый лог: ERROR")
-    return "Проверьте консоль — должны быть логи!"

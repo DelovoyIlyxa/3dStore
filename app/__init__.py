@@ -19,13 +19,11 @@ def create_app():
         static_folder='static'    # статика в корне/static/
     )
 
-    # Настройка логирования (раньше — чтобы залогировать инициализацию)
+    # Настройка логирования
     # Уровень по умолчанию — INFO, лог в консоль
-        # 🔥 ГАРАНТИРОВАННО включаем INFO-логи в консоль
-    logging.getLogger().setLevel(logging.INFO)  # ← корневой логгер
-    app.logger.setLevel(logging.INFO)          # ← логгер приложения
+    logging.getLogger().setLevel(logging.INFO)  # корневой логгер
+    app.logger.setLevel(logging.INFO)          #  логгер приложения
 
-    # Опционально: убедимся, что StreamHandler есть и выводит всё
     if not app.logger.handlers:
         handler = logging.StreamHandler()
         handler.setFormatter(logging.Formatter(

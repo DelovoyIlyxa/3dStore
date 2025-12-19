@@ -82,27 +82,22 @@ def catalog():
     ip = request.headers.get('X-Forwarded-For', request.remote_addr)
     query = request.args.get('q', '').strip()
     current_app.logger.info(f"[SHOP] Каталог: запрос, ip={ip}, query='{query}'")
-    # ... остальной код без изменений (лог внутри не нужен — он в шаблоне)
 
-    product_ids = db.session.query(Product.id)
+    base_query = db.session.query(
+        Product,
+        func.avg(Review.rating).label('avg_rating'),
+        func.count(Review.id).label('review_count')
+    ).outerjoin(Review).group_by(Product.id).order_by(Product.created_at.desc())
+
     if query:
-        product_ids = product_ids.filter(
+        base_query = base_query.filter(
             or_(
                 Product.title.ilike(f'%{query}%'),
                 Product.description.ilike(f'%{query}%')
             )
         )
-    product_ids = [id for id, in product_ids.all()]
 
-    products = db.session.query(
-        Product,
-        func.avg(Review.rating).label('avg_rating'),
-        func.count(Review.id).label('review_count')
-    ).outerjoin(Review)\
-     .filter(Product.id.in_(product_ids) if product_ids else True)\
-     .group_by(Product.id)\
-     .order_by(Product.created_at.desc())\
-     .all()
+    products = base_query.all()
 
     return render_template('shop/catalog.html', products=products, search_query=query)
 

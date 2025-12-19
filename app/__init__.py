@@ -22,7 +22,7 @@ def create_app():
     # Настройка логирования
     # Уровень по умолчанию — INFO, лог в консоль
     logging.getLogger().setLevel(logging.INFO)  # корневой логгер
-    app.logger.setLevel(logging.INFO)          #  логгер приложения
+    app.logger.setLevel(logging.INFO)          #  логгер приложения2
 
     if not app.logger.handlers:
         handler = logging.StreamHandler()
